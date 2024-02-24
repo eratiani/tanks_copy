@@ -1,58 +1,65 @@
-import { BaseClass } from "./baseClass.js";
+import { Bot } from "./bot.js";
+import { MovingObj } from "./movingObj.js";
+import { Player } from "./player.js";
 
-export class Bullet extends BaseClass {
-  constructor(x, y, element, direction, shotBy) {
-    super();
-    this.positionX = x;
-    this.positionY = y;
-    this.domElement = element;
+export class Bullet extends MovingObj {
+  constructor(x, y, direction, createdBy) {
+    super(x, y);
     this.movDirection = direction;
-    this.movSpeed = 10;
-    this.shotBy = shotBy;
-    this.health = 1;
-    this.name = "bullet";
+    this.movSpeed = 9;
+    this.width = 5;
+    this.height = 5;
+    this.createdBy = createdBy;
+    this._domeEl.classList.add("game-object__bullet");
+    this.drawBullet(this.movDirection);
   }
-  onMove(direction, colidedWith) {
-    let newX = this.positionX;
-    let newY = this.positionY;
-    if (colidedWith.length !== 0) {
-      this.health -= 1;
-      colidedWith[0].onHit();
+  update(collision) {
+    if (collision) {
+      this.deleteObj(this);
+      if (
+        collision.isDestructable ||
+        this.createdBy === collision.constructor.name
+      )
+        return;
+      collision.hit();
       return;
     }
+    this.move(this.movDirection);
+  }
+
+  move(direction) {
+    let newX = this.positionX;
+    let newY = this.positionY;
     switch (direction) {
       case "ArrowUp":
         this.movDirection = direction;
         newY -= this.movSpeed;
         break;
       case "ArrowDown":
+        this.movDirection = direction;
         newY += this.movSpeed;
         break;
       case "ArrowLeft":
+        this.movDirection = direction;
         newX -= this.movSpeed;
         break;
       case "ArrowRight":
+        this.movDirection = direction;
         newX += this.movSpeed;
         break;
-
       default:
         break;
     }
+
     this.updateElementPosition(newX, newY);
   }
-  move(e, withoutBot, direction) {
-    const colidedWith = withoutBot.filter((obj) =>
-      this.isColiding(e.domElement, obj.domElement, "bullet")
-    );
-    this.onMove(direction, colidedWith);
-  }
-  updateElementPosition(x, y) {
-    this.positionX = x;
-    this.positionY = y;
-    this.domElement.style.left = `${this.positionX}px`;
-    this.domElement.style.top = `${this.positionY}px`;
-  }
-  onHit() {
-    this.health -= 1;
+  isColiding(arr, dir) {
+    const target = arr.filter((e) => e !== this);
+    let nextX = this.positionX;
+    let nextY = this.positionY;
+
+    return target.find((currEl) => {
+      return this.collision(nextX, nextY, currEl);
+    });
   }
 }

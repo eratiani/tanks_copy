@@ -1,32 +1,42 @@
 import { Bullet } from "./bullet.js";
-import { Bot, Player } from "./tank.js";
-import { GameRoom } from "./gameRoom.js";
-const GAME_TIMER_INTERVAL = 50; // sets the time interval during which one step in the game will be performed
-let PLAYER_LIFE_COUNT = 3;
-let ENEMY_TANKS_COUNT = 21;
-let IS_GAME_OVER = false;
-let IS_GAME_Started = false;
+import { MAP, MAP_LEGEND } from "./map.js";
+import { MovingObj } from "./movingObj.js";
+import { Player } from "./player.js";
+const GAME_TIMER_INTERVAL = 40; // sets the time interval during which one step in the game will be performed
+export let PLAYER_LIFE_COUNT = [3];
+export let ENEMY_TANKS_COUNT = [21];
+let currPlayer = null;
+export let IS_GAME_OVER = [false];
 let playerLifeCont = document.getElementById("player--life");
 let tankCountCont = document.getElementById("tank--count");
-let currGame = [];
-let player = null;
-const playerActionHandler = (e) => {
-  player = currGame.finGameObj("player")[0];
-  const withoutPlayer = currGame.gameObjs.filter((obj) => obj != player);
-  const colision = withoutPlayer.some((obj) =>
-    currGame.isColiding(player.domElement, obj.domElement)
-  );
-  player.onMove(e.key, colision);
-  if (e.key === " " && player.bulletCount > 0) {
-    const bullDIr = player.movDirection;
-    currGame.drawBullet(bullDIr, player, "player");
-    player.reload();
-  }
-};
+export let gameArr = [];
 /**
  * in this function you can execute all the code that is necessary to start the game
  * for example, it is in this place that you can draw wall blocks on the map and subscribe to events when control buttons are pressed
  */
+const playerActionHandler = (e) => {
+  let player = currPlayer;
+  const withoutPlayer = gameArr.filter((obj) => obj !== player);
+  if (e.key === " " && player.bulletCount > 0) {
+    const bullet = new Bullet(
+      player.positionX,
+      player.positionY,
+      player.movDirection,
+      player.constructor.name
+    );
+    gameArr.push(bullet);
+    player.reload();
+  }
+  const isDirection = player.directionsArr.some((el) => el === e.key);
+  if (isDirection) {
+    player.movDirection = e.key;
+  } else {
+    return;
+  }
+  const colision = player.isColiding(withoutPlayer, player.movDirection);
+
+  player.move(e.key, colision);
+};
 gameInitialization();
 
 /**
@@ -35,29 +45,27 @@ gameInitialization();
  * (to end the game, set IS_GAME_OVER to true)
  */
 gameLoop();
-
 function gameInitialization() {
-  const game = new GameRoom();
-  game.init();
-  currGame = game;
+  MAP.forEach((element, i) => {
+    for (let index = 0; index < element.length; index++) {
+      const arrItem = MAP_LEGEND[element[index]];
+      const x = index * 64;
+      const y = i * 64;
+      const objConstructor = arrItem;
+      const gameObj = objConstructor ? new objConstructor(x, y) : null;
+      if (gameObj instanceof Player) {
+        currPlayer = gameObj;
+      }
+      if (gameObj) {
+        gameArr.push(gameObj);
+      }
+    }
+  });
+  document.addEventListener("keydown", playerActionHandler);
 }
 
 function gameLoop() {
-  if (PLAYER_LIFE_COUNT <= 0 || ENEMY_TANKS_COUNT <= 0) {
-    document.removeEventListener("keydown", playerActionHandler);
-    let message = "win";
-    IS_GAME_OVER = true;
-    if (PLAYER_LIFE_COUNT <= 0) {
-      message = "loose";
-    }
-    currGame.endgameMessage(message);
-  }
-  if (!IS_GAME_Started) {
-    document.addEventListener("keydown", playerActionHandler);
-
-    IS_GAME_Started = !IS_GAME_Started;
-  }
-  if (IS_GAME_OVER !== true) {
+  if (IS_GAME_OVER[0] !== true) {
     /**
      * it is in the gameStep function that you should place the code that will be executed at each step of the game loop
      */
@@ -66,39 +74,22 @@ function gameLoop() {
     setTimeout(function () {
       gameLoop();
     }, GAME_TIMER_INTERVAL);
+  } else {
+    document.removeEventListener("keydown", playerActionHandler);
   }
 }
 
 function gameStep() {
-  tankCountCont.textContent = ENEMY_TANKS_COUNT;
-  playerLifeCont.textContent = PLAYER_LIFE_COUNT;
-
-  currGame.gameObjs.forEach((obj) => {
-    if (
-      !currGame.withinGameMap(obj.domElement, "bullet") &&
-      obj.name === "bullet"
-    ) {
-      obj.onHit();
+  tankCountCont.textContent = ENEMY_TANKS_COUNT[0];
+  playerLifeCont.textContent = PLAYER_LIFE_COUNT[0];
+  gameArr.forEach((obj) => {
+    if (obj instanceof MovingObj && !(obj instanceof Player)) {
+      const collision = obj.isColiding(gameArr, obj.movDirection);
+      obj.update(collision);
+    } else {
+      obj.update();
     }
-    if (obj.name === "bot" || obj.name === "bullet") {
-      const whithoutCurrObj = currGame.gameObjs.filter(
-        (el) => el !== obj && obj.shotBy !== el.name
-      );
-      obj.move(obj, whithoutCurrObj, obj.movDirection);
-      if (obj.name === "bot" && obj.bulletCount > 0) {
-        currGame.drawBullet(obj.movDirection, obj, "bot");
-        obj.reload();
-      }
-    }
-    if (obj.name === "wall") {
-      obj.updatewall();
-    }
-    currGame.destroyObj(obj);
   });
-  currGame.gameObjs.filter((obj) => obj.name === "bot").length < 3 &&
-    spawnBot();
-  let player = currGame.gameObjs.filter((obj) => obj.name === "player");
-  player.length < 1 && spawnPlayer();
   /**
    * this is the place where you should take the main steps of the game cycle
    * for example, it seems to us that we could do the following
@@ -109,20 +100,4 @@ function gameStep() {
    * 5. check if the player has run out of lives or if the enemy tanks have run out
    * 6. create new tanks at the bases in case someone was killed at this step
    */
-}
-function spawnBot() {
-  ENEMY_TANKS_COUNT -= 1;
-  tankCountCont.textContent = ENEMY_TANKS_COUNT;
-  if (ENEMY_TANKS_COUNT <= 0) return;
-  const [botEl, x, y] = currGame.spawnBot();
-  const bot = new Bot(x, y, botEl);
-  currGame.addObjToGame(bot);
-}
-function spawnPlayer() {
-  PLAYER_LIFE_COUNT -= 1;
-  playerLifeCont.textContent = PLAYER_LIFE_COUNT;
-  if (PLAYER_LIFE_COUNT <= 0) return;
-  const [playerEl, x, y] = currGame.spawnPlayer();
-  const player = new Player(x, y, playerEl);
-  currGame.addObjToGame(player);
 }

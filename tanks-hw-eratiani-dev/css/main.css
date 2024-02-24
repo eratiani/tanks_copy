@@ -25,6 +25,10 @@ html {
   background: url("../img/wall.png");
   background-size: contain;
 }
+.game-object__Big-wall {
+  background: url("../img/BigWall.png") !important;
+  background-size: contain !important;
+}
 .game-object__bullet {
   width: 5px;
   height: 5px;
@@ -44,14 +48,14 @@ main {
   width: 832px;
 }
 #game-map {
-  width: 832px;
-  height: 896px;
-  background: rgb(0, 0, 0);
+  width: 960px;
+  height: 1024px;
+  background: #111;
   position: relative;
 }
 #legend {
   flex: 1 30%;
-  margin-left: 20px;
+  margin-left: 135px;
 }
 
 .legend-list {
@@ -63,12 +67,14 @@ main {
   margin-bottom: 10px;
   display: block;
   height: 64px;
-  line-height: 64px;
+  line-height: 14px;
 }
 .legend-item .game-object {
+  position: absolute;
   top: 0;
   left: 0;
 }
+
 .hit {
   opacity: 0.75;
 }

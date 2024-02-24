@@ -1,24 +1,20 @@
 import { BaseClass } from "./baseClass.js";
 
 export class Wall extends BaseClass {
-  constructor(x, y, element) {
-    super();
+  constructor(x, y) {
+    super(x, y);
+    this._domeEl.classList.add("game-object__wall");
+    this.width = 64;
+    this.height = 64;
     this.health = 3;
-    this.positionX = x;
-    this.positionY = y;
-    this.domElement = element;
-    this.name = "wall";
   }
-  loverHealth() {
-    this.health -= 1;
-    return this.health;
-  }
-
-  updatewall() {
-    if (this.health === 2) {
-      this.domElement.classList.add("hit");
+  update() {
+    if (this.health <= 0) {
+      this.deleteObj(this);
+    } else if (this.health === 2) {
+      this._domeEl.classList.add("hit");
     } else if (this.health === 1) {
-      this.domElement.classList.add("hardHit");
+      this._domeEl.classList.add("hardHit");
     }
   }
 }
